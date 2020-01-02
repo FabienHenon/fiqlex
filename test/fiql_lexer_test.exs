@@ -1,5 +1,5 @@
 defmodule FIQLExLexerTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   test "Simple selector" do
     payload = "my_selector"
@@ -32,6 +32,22 @@ defmodule FIQLExLexerTest do
                 {:selector, 1, 'my_selector'},
                 {:equal, 1},
                 {:value, 1, '2019-02-02T18:32:12Z'}
+              ], 1}
+  end
+
+  test "Selector with list value" do
+    payload = "my_selector==(1, value)"
+
+    assert :fiql_lexer.string(to_charlist(payload)) ==
+             {:ok,
+              [
+                {:selector, 1, 'my_selector'},
+                {:equal, 1},
+                {:"(", 1},
+                {:arg_int, 1, 1},
+                {:or_op, 1},
+                {:selector, 1, 'value'},
+                {:")", 1}
               ], 1}
   end
 

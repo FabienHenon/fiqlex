@@ -1,5 +1,5 @@
 defmodule FIQLExParserTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   test "Simple selector" do
     payload = "my_selector"
@@ -14,7 +14,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_string, "value"}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, "value"}}}
   end
 
   test "Selector with complex value" do
@@ -22,9 +22,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok,
-              {:op,
-               {:selector_and_value, "my_selector", :equal, {:arg_string, "2019-02-02T18:32:12Z"}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, "2019-02-02T18:32:12Z"}}}
   end
 
   test "Selector with true value" do
@@ -32,7 +30,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_bool, true}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, true}}}
   end
 
   test "Selector with false value" do
@@ -40,7 +38,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_bool, false}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, false}}}
   end
 
   test "Selector with integer value" do
@@ -48,7 +46,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_int, 123}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, 123}}}
   end
 
   test "Selector with positive integer value" do
@@ -56,7 +54,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_int, 123}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, 123}}}
   end
 
   test "Selector with negative integer value" do
@@ -64,7 +62,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_int, -123}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, -123}}}
   end
 
   test "Selector with float value" do
@@ -72,7 +70,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_float, 123.5}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, 123.5}}}
   end
 
   test "Selector with positive float value" do
@@ -80,7 +78,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_float, 123.5}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, 123.5}}}
   end
 
   test "Selector with negative float value" do
@@ -88,7 +86,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_float, -123.5}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, -123.5}}}
   end
 
   test "Selector with complex float value" do
@@ -96,7 +94,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector", :equal, {:arg_float, -123.5e-10}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, -123.5e-10}}}
   end
 
   test "Selector with double quoted value" do
@@ -104,9 +102,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok,
-              {:op,
-               {:selector_and_value, "my_selector", :equal, {:arg_string, "my value != weird;,"}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, "my value != weird;,"}}}
   end
 
   test "Selector with complex double quoted value" do
@@ -115,9 +111,7 @@ defmodule FIQLExParserTest do
 
     assert :fiql_parser.parse(tokens) ==
              {:ok,
-              {:op,
-               {:selector_and_value, "my_selector", :equal,
-                {:arg_string, "my \"value\" != 'weird';,"}}}}
+              {:op, {:selector_and_value, "my_selector", :equal, "my \"value\" != 'weird';,"}}}
   end
 
   test "Selector with single quoted value" do
@@ -125,9 +119,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok,
-              {:op,
-               {:selector_and_value, "my_selector", :equal, {:arg_string, "my value != weird;,"}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector", :equal, "my value != weird;,"}}}
   end
 
   test "Selector with complex single quoted value" do
@@ -136,9 +128,17 @@ defmodule FIQLExParserTest do
 
     assert :fiql_parser.parse(tokens) ==
              {:ok,
+              {:op, {:selector_and_value, "my_selector", :equal, "my \"value\" != 'weird';,"}}}
+  end
+
+  test "Selector with list value" do
+    payload = "my_selector==(1, \"hello world\", (true, false))"
+    {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
+
+    assert :fiql_parser.parse(tokens) ==
+             {:ok,
               {:op,
-               {:selector_and_value, "my_selector", :equal,
-                {:arg_string, "my \"value\" != 'weird';,"}}}}
+               {:selector_and_value, "my_selector", :equal, [1, "hello world", [true, false]]}}}
   end
 
   test "Equal comparison" do
@@ -146,7 +146,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok, {:op, {:selector_and_value, "my_selector1", :equal, {:arg_string, "value1"}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}}}
   end
 
   test "Not equal comparison" do
@@ -154,8 +154,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok,
-              {:op, {:selector_and_value, "my_selector1", :not_equal, {:arg_string, "value1"}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector1", :not_equal, "value1"}}}
   end
 
   test "Custom comparison" do
@@ -163,9 +162,7 @@ defmodule FIQLExParserTest do
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
 
     assert :fiql_parser.parse(tokens) ==
-             {:ok,
-              {:op,
-               {:selector_and_value, "my_selector1", {:comparison, "ge"}, {:arg_string, "value1"}}}}
+             {:ok, {:op, {:selector_and_value, "my_selector1", {:comparison, "ge"}, "value1"}}}
   end
 
   test "Multiple selectors separated by or and and" do
@@ -174,11 +171,9 @@ defmodule FIQLExParserTest do
 
     assert :fiql_parser.parse(tokens) ==
              {:ok,
-              {:or_op,
-               {:op, {:selector_and_value, "my_selector1", :equal, {:arg_string, "value1"}}},
-               {:and_op,
-                {:op, {:selector_and_value, "my_selector2", :equal, {:arg_string, "value2"}}},
-                {:op, {:selector_and_value, "my_selector3", :equal, {:arg_string, "value3"}}}}}}
+              {:or_op, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}},
+               {:and_op, {:op, {:selector_and_value, "my_selector2", :equal, "value2"}},
+                {:op, {:selector_and_value, "my_selector3", :equal, "value3"}}}}}
   end
 
   test "Multiple selectors separated by and and or" do
@@ -187,11 +182,9 @@ defmodule FIQLExParserTest do
 
     assert :fiql_parser.parse(tokens) ==
              {:ok,
-              {:or_op,
-               {:op, {:selector_and_value, "my_selector1", :equal, {:arg_string, "value1"}}},
-               {:and_op,
-                {:op, {:selector_and_value, "my_selector2", :equal, {:arg_string, "value2"}}},
-                {:op, {:selector_and_value, "my_selector3", :equal, {:arg_string, "value3"}}}}}}
+              {:or_op, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}},
+               {:and_op, {:op, {:selector_and_value, "my_selector2", :equal, "value2"}},
+                {:op, {:selector_and_value, "my_selector3", :equal, "value3"}}}}}
   end
 
   test "Parenthesis with and, or" do
@@ -200,11 +193,9 @@ defmodule FIQLExParserTest do
 
     assert :fiql_parser.parse(tokens) ==
              {:ok,
-              {:and_op,
-               {:op, {:selector_and_value, "my_selector1", :equal, {:arg_string, "value1"}}},
-               {:or_op,
-                {:op, {:selector_and_value, "my_selector2", :equal, {:arg_string, "value2"}}},
-                {:op, {:selector_and_value, "my_selector3", :equal, {:arg_string, "value3"}}}}}}
+              {:and_op, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}},
+               {:or_op, {:op, {:selector_and_value, "my_selector2", :equal, "value2"}},
+                {:op, {:selector_and_value, "my_selector3", :equal, "value3"}}}}}
   end
 
   test "Parenthesis with or, and" do
@@ -213,10 +204,24 @@ defmodule FIQLExParserTest do
 
     assert :fiql_parser.parse(tokens) ==
              {:ok,
-              {:or_op,
-               {:op, {:selector_and_value, "my_selector1", :equal, {:arg_string, "value1"}}},
-               {:and_op,
-                {:op, {:selector_and_value, "my_selector2", :equal, {:arg_string, "value2"}}},
-                {:op, {:selector_and_value, "my_selector3", :equal, {:arg_string, "value3"}}}}}}
+              {:or_op, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}},
+               {:and_op, {:op, {:selector_and_value, "my_selector2", :equal, "value2"}},
+                {:op, {:selector_and_value, "my_selector3", :equal, "value3"}}}}}
+  end
+
+  test "Missing parenthesis" do
+    payload = "(my_selector1==value1,(my_selector2==value2;my_selector3==value3)"
+    {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
+
+    assert :fiql_parser.parse(tokens) ==
+             {:error, {1, :fiql_parser, ['syntax error before: ', []]}}
+  end
+
+  test "Missing parenthesis in list" do
+    payload = "my_selector1==(value1, value2, (value3)"
+    {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
+
+    assert :fiql_parser.parse(tokens) ==
+             {:error, {1, :fiql_parser, ['syntax error before: ', []]}}
   end
 end

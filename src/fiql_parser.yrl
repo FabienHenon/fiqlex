@@ -1,4 +1,4 @@
-Nonterminals or_expression and_expression constraint group arguments.
+Nonterminals or_expression and_expression constraint group arguments list_arguments list_argument_items.
 Terminals '(' ')' or_op and_op selector arg_float arg_int arg_bool value comparison equal not_equal.
 Rootsymbol or_expression.
 
@@ -16,11 +16,18 @@ constraint -> selector not_equal arguments    : {op, {selector_and_value, list_t
 
 group -> '(' or_expression ')'  : '$2'.
 
-arguments -> value      : {arg_string, list_to_binary(extract_token('$1'))}.
-arguments -> selector   : {arg_string, list_to_binary(extract_token('$1'))}.
-arguments -> arg_float  : {arg_float, extract_token('$1')}.
-arguments -> arg_int    : {arg_int, extract_token('$1')}.
-arguments -> arg_bool   : {arg_bool, extract_token('$1')}.
+arguments -> value          : list_to_binary(extract_token('$1')).
+arguments -> selector       : list_to_binary(extract_token('$1')).
+arguments -> arg_float      : extract_token('$1').
+arguments -> arg_int        : extract_token('$1').
+arguments -> arg_bool       : extract_token('$1').
+arguments -> list_arguments : '$1'.
+
+list_arguments -> '(' ')'                       : [].
+list_arguments -> '(' list_argument_items ')'   : '$2'.
+
+list_argument_items -> arguments                            : ['$1'].
+list_argument_items -> arguments or_op list_argument_items  : ['$1' | '$3'].
 
 Erlang code.
 

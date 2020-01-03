@@ -1,4 +1,4 @@
-defmodule FIQLEx.SQLQueryBuilder do
+defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   @moduledoc ~S"""
   Builds SQL queries from FIQL AST.
 
@@ -18,46 +18,49 @@ defmodule FIQLEx.SQLQueryBuilder do
 
   ## Examples
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name = 'John'"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.SQLQueryBuilder, select: :all)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors, table: "author")
+      {:ok, "SELECT name FROM author WHERE name = 'John'"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :all)
       {:ok, "SELECT * FROM table WHERE name = 'John'"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.SQLQueryBuilder, select: ["another", "other"])
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: ["another", "other"])
       {:ok, "SELECT another, other FROM table WHERE name = 'John'"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name==John;(age=gt=25,age=lt=18)"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John;(age=gt=25,age=lt=18)"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name, age FROM table WHERE (name = 'John' AND (age > 25 OR age < 18))"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name=ge=John"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name=ge=John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:error, :invalid_format}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name=ge=2019-02-02T18:23:03Z"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name=ge=2019-02-02T18:23:03Z"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name >= '2019-02-02T18:23:03Z'"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name!=12.4"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name!=12.4"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name <> 12.4"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name!=true"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name!=true"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name <> true"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name!=false"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name!=false"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name <> false"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name IS NOT NULL"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name!=(1,2,Hello)"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name!=(1,2,Hello)"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name NOT IN (1, 2, 'Hello')"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name!='Hello \\'World'"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name!='Hello \\'World'"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name <> 'Hello ''World'"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name!=*Hello"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name!=*Hello"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name NOT LIKE '%Hello'"}
 
-      iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello*"), FIQLEx.SQLQueryBuilder, select: :from_selectors)
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello*"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name LIKE 'Hello%'"}
   """
   use FIQLEx.QueryBuilder

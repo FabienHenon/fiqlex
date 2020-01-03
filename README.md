@@ -14,7 +14,7 @@ system (SQL, Elasticsearch, etc...) from it.
 
 ## Grammar
 
-If you want to know more about FIQL grammar please check the [RFC](http://tools.ietf.org/html/draft-nottingham-atompub-fiql-00), and my [lexer](src/fiql_lexer.xrl) and [parser](src/fiql_lexer.yrl)
+If you want to know more about FIQL grammar please check the [RFC](http://tools.ietf.org/html/draft-nottingham-atompub-fiql-00), and my [lexer](src/fiql_lexer.xrl) and [parser](src/fiql_parser.yrl)
 
 ## Quick start
 

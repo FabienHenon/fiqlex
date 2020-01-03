@@ -22,10 +22,9 @@ defmodule FIQLEx.MixProject do
 
   def package() do
     [
-      name: "FIQLEx",
+      name: "fiqlex",
       licenses: ["MIT"],
-      links: %{GitHub: "https://github.com/calions-app/fiqlex"},
-      organization: "Calions apps"
+      links: %{GitHub: "https://github.com/calions-app/fiqlex"}
     ]
   end
 

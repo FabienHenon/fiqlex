@@ -54,7 +54,7 @@ as second argument of `build_query/3`.
 
 ## Documentation
 
-Documentation can be found in [hexdoc](http://hexdocs.pm/fiqlex)
+Documentation can be found in [hexdoc](https://hexdocs.pm/fiqlex/FIQLEx.html)
 
 ## Tests
 

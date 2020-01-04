@@ -176,6 +176,56 @@ defmodule FIQLExParserTest do
                 {:op, {:selector_and_value, "my_selector3", :equal, "value3"}}}}}
   end
 
+  test "Multiple ORs" do
+    payload = "my_selector1==value1,my_selector2==value2,my_selector3==value3"
+    {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
+
+    assert :fiql_parser.parse(tokens) ==
+             {:ok,
+              {:or_op, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}},
+               {:or_op, {:op, {:selector_and_value, "my_selector2", :equal, "value2"}},
+                {:op, {:selector_and_value, "my_selector3", :equal, "value3"}}}}}
+  end
+
+  test "Multiple ANDs" do
+    payload = "my_selector1==value1;my_selector2==value2;my_selector3==value3"
+    {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
+
+    assert :fiql_parser.parse(tokens) ==
+             {:ok,
+              {:and_op, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}},
+               {:and_op, {:op, {:selector_and_value, "my_selector2", :equal, "value2"}},
+                {:op, {:selector_and_value, "my_selector3", :equal, "value3"}}}}}
+  end
+
+  test "Multiple ORs (4)" do
+    payload =
+      "my_selector1==value1,my_selector2==value2,my_selector3==value3,my_selector4==value4"
+
+    {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
+
+    assert :fiql_parser.parse(tokens) ==
+             {:ok,
+              {:or_op, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}},
+               {:or_op, {:op, {:selector_and_value, "my_selector2", :equal, "value2"}},
+                {:or_op, {:op, {:selector_and_value, "my_selector3", :equal, "value3"}},
+                 {:op, {:selector_and_value, "my_selector4", :equal, "value4"}}}}}}
+  end
+
+  test "Multiple ANDs (4)" do
+    payload =
+      "my_selector1==value1;my_selector2==value2;my_selector3==value3;my_selector4==value4"
+
+    {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))
+
+    assert :fiql_parser.parse(tokens) ==
+             {:ok,
+              {:and_op, {:op, {:selector_and_value, "my_selector1", :equal, "value1"}},
+               {:and_op, {:op, {:selector_and_value, "my_selector2", :equal, "value2"}},
+                {:and_op, {:op, {:selector_and_value, "my_selector3", :equal, "value3"}},
+                 {:op, {:selector_and_value, "my_selector4", :equal, "value4"}}}}}}
+  end
+
   test "Multiple selectors separated by and and or" do
     payload = "my_selector1==value1,my_selector2==value2;my_selector3==value3"
     {:ok, tokens, _} = :fiql_lexer.string(to_charlist(payload))

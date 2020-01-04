@@ -3,10 +3,10 @@ Terminals '(' ')' or_op and_op selector arg_float arg_int arg_bool value compari
 Rootsymbol or_expression.
 
 or_expression -> and_expression                       : '$1'.
-or_expression -> and_expression or_op and_expression  : {or_op, '$1', '$3'}.
+or_expression -> or_expression or_op or_expression    : {or_op, '$1', '$3'}.
 
-and_expression -> constraint                    : '$1'.
-and_expression -> constraint and_op constraint  : {and_op, '$1', '$3'}.
+and_expression -> constraint                            : '$1'.
+and_expression -> or_expression and_op or_expression    : {and_op, '$1', '$3'}.
 
 constraint -> group                           : '$1'.
 constraint -> selector                        : {op, {selector, list_to_binary(extract_token('$1'))}}.

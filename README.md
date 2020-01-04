@@ -23,7 +23,7 @@ First, add this module to your `mix.exs` file:
 ```elixir
 defp deps do
   [
-    {:fiqlex, "~> 0.1.0"},
+    {:fiqlex, "~> 0.1.1"},
   ]
 end
 ```

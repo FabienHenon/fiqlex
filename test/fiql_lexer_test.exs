@@ -227,6 +227,96 @@ defmodule FIQLExLexerTest do
               ], 1}
   end
 
+  test "Multiple ORs" do
+    payload = "my_selector1==value1,my_selector2==value2,my_selector3==value3"
+
+    assert :fiql_lexer.string(to_charlist(payload)) ==
+             {:ok,
+              [
+                {:selector, 1, 'my_selector1'},
+                {:equal, 1},
+                {:selector, 1, 'value1'},
+                {:or_op, 1},
+                {:selector, 1, 'my_selector2'},
+                {:equal, 1},
+                {:selector, 1, 'value2'},
+                {:or_op, 1},
+                {:selector, 1, 'my_selector3'},
+                {:equal, 1},
+                {:selector, 1, 'value3'}
+              ], 1}
+  end
+
+  test "Multiple ANDs" do
+    payload = "my_selector1==value1;my_selector2==value2;my_selector3==value3"
+
+    assert :fiql_lexer.string(to_charlist(payload)) ==
+             {:ok,
+              [
+                {:selector, 1, 'my_selector1'},
+                {:equal, 1},
+                {:selector, 1, 'value1'},
+                {:and_op, 1},
+                {:selector, 1, 'my_selector2'},
+                {:equal, 1},
+                {:selector, 1, 'value2'},
+                {:and_op, 1},
+                {:selector, 1, 'my_selector3'},
+                {:equal, 1},
+                {:selector, 1, 'value3'}
+              ], 1}
+  end
+
+  test "Multiple ORs (4)" do
+    payload =
+      "my_selector1==value1,my_selector2==value2,my_selector3==value3,my_selector4==value4"
+
+    assert :fiql_lexer.string(to_charlist(payload)) ==
+             {:ok,
+              [
+                {:selector, 1, 'my_selector1'},
+                {:equal, 1},
+                {:selector, 1, 'value1'},
+                {:or_op, 1},
+                {:selector, 1, 'my_selector2'},
+                {:equal, 1},
+                {:selector, 1, 'value2'},
+                {:or_op, 1},
+                {:selector, 1, 'my_selector3'},
+                {:equal, 1},
+                {:selector, 1, 'value3'},
+                {:or_op, 1},
+                {:selector, 1, 'my_selector4'},
+                {:equal, 1},
+                {:selector, 1, 'value4'}
+              ], 1}
+  end
+
+  test "Multiple ANDs (4)" do
+    payload =
+      "my_selector1==value1;my_selector2==value2;my_selector3==value3;my_selector4==value4"
+
+    assert :fiql_lexer.string(to_charlist(payload)) ==
+             {:ok,
+              [
+                {:selector, 1, 'my_selector1'},
+                {:equal, 1},
+                {:selector, 1, 'value1'},
+                {:and_op, 1},
+                {:selector, 1, 'my_selector2'},
+                {:equal, 1},
+                {:selector, 1, 'value2'},
+                {:and_op, 1},
+                {:selector, 1, 'my_selector3'},
+                {:equal, 1},
+                {:selector, 1, 'value3'},
+                {:and_op, 1},
+                {:selector, 1, 'my_selector4'},
+                {:equal, 1},
+                {:selector, 1, 'value4'}
+              ], 1}
+  end
+
   test "Equal comparison" do
     payload = "my_selector1==value1"
 

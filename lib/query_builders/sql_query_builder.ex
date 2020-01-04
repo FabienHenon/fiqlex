@@ -62,6 +62,18 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
 
       iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello*"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name LIKE 'Hello%'"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello;age=ge=10;friend==true"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
+      {:ok, "SELECT name, age, friend FROM table WHERE (name = 'Hello' AND (age >= 10 AND friend = true))"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello,age=ge=10,friend==true"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
+      {:ok, "SELECT name, age, friend FROM table WHERE (name = 'Hello' OR (age >= 10 OR friend = true))"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello;age=ge=10;friend==true;ok"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
+      {:ok, "SELECT name, age, friend, ok FROM table WHERE (name = 'Hello' AND (age >= 10 AND (friend = true AND ok IS NOT NULL)))"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello,age=ge=10,friend==true,ok"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
+      {:ok, "SELECT name, age, friend, ok FROM table WHERE (name = 'Hello' OR (age >= 10 OR (friend = true OR ok IS NOT NULL)))"}
   """
   use FIQLEx.QueryBuilder
 

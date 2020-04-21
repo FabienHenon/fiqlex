@@ -9,6 +9,9 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   * `ecto`: Tuple containing the ecto repo and the ecto schema to use for the query. This will execute the query and return the result as a list
   * `only`: A list with the only fields to accept in the query (if `only` and `except` are both provided, `only` is used)
   * `except`: A list with the fields to reject in the query (if `only` and `except` are both provided, `only` is used)
+  * `order_by`: A string order by to be added to the query
+  * `limit`: A limit for the query
+  * `offset`: An offset for the query
 
 
   ### Select option
@@ -106,6 +109,18 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
 
       iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, except: ["bad"])
       {:ok, "SELECT * FROM table WHERE name = 'John'"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, order_by: "name DESC")
+      {:ok, "SELECT * FROM table WHERE name = 'John' ORDER BY name DESC"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, limit: "10")
+      {:ok, "SELECT * FROM table WHERE name = 'John' LIMIT 10"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, offset: "10")
+      {:ok, "SELECT * FROM table WHERE name = 'John' OFFSET 10"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, order_by: "name", limit: "5", offset: "10")
+      {:ok, "SELECT * FROM table WHERE name = 'John' ORDER BY name LIMIT 5 OFFSET 10"}
   """
   use FIQLEx.QueryBuilder
 
@@ -131,7 +146,15 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
       end
 
     table = Keyword.get(opts, :table, "table")
-    final_query = "SELECT " <> select <> " FROM " <> table <> " WHERE " <> query
+    order_by = Keyword.get(opts, :order_by, "")
+    limit = Keyword.get(opts, :limit, "")
+    offset = Keyword.get(opts, :offset, "")
+
+    final_query =
+      ("SELECT " <> select <> " FROM " <> table <> " WHERE " <> query)
+      |> add_to_query("ORDER BY", order_by)
+      |> add_to_query("LIMIT", limit)
+      |> add_to_query("OFFSET", offset)
 
     case Keyword.get(opts, :ecto, nil) do
       nil ->
@@ -142,6 +165,9 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
         |> load_into_model(repo, model)
     end
   end
+
+  defp add_to_query(query, _command, ""), do: query
+  defp add_to_query(query, command, suffix), do: query <> " " <> command <> " " <> suffix
 
   defp load_into_model({:ok, %{rows: rows, columns: columns}}, repo, model) do
     {:ok,

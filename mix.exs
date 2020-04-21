@@ -4,7 +4,7 @@ defmodule FIQLEx.MixProject do
   def project do
     [
       app: :fiqlex,
-      version: "0.1.1",
+      version: "0.1.2",
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -38,6 +38,8 @@ defmodule FIQLEx.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:ecto, ">= 3.4.2"},
+      {:ecto_sql, ">= 3.4.2"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}

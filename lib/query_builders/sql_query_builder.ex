@@ -6,6 +6,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
 
   * `table`: The table name to use in the `FROM` statement (defaults to `"table"`)
   * `select`: `SELECT` statement to build (_see below_).
+  * `ecto`: Tuple containing the ecto repo and the ecto schema to use for the query. This will execute the query and return the result as a list
 
   ### Select option
 
@@ -15,6 +16,22 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   * `:from_selectors`: Searches for all selectors in the FIQL AST and use them as `SELECT` statement.
   For instance, for the following query: `age=ge=25;name==*Doe`, the `SELECT` statement will be `SELECT age, name`
   * `selectors`: You specify a list of items you want to use in the `SELECT` statement.
+
+  ### Ecto option
+
+  You can directly execute the SQL query in an Ecto context by proving in a tuple the repo and the schema to use.
+
+  For instance:
+
+  ```elixir
+  FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, echo: {Repo, User})
+  ```
+
+  May return something like this:
+
+  ```elixir
+  {:ok, [%User{name: "John", age: 18}, %User{name: "John", age: 21}]}
+  ```
 
   ## Examples
 
@@ -99,8 +116,32 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
       end
 
     table = Keyword.get(opts, :table, "table")
+    final_query = "SELECT " <> select <> " FROM " <> table <> " WHERE " <> query
 
-    {:ok, "SELECT " <> select <> " FROM " <> table <> " WHERE " <> query}
+    case Keyword.get(opts, :ecto, nil) do
+      nil ->
+        {:ok, final_query}
+
+      {repo, model} ->
+        Ecto.Adapters.SQL.query!(repo, final_query, [])
+        |> load_into_model(repo, model)
+    end
+  end
+
+  defp load_into_model({:ok, %{rows: rows, columns: columns}}, repo, model) do
+    {:ok,
+     Enum.map(rows, fn row ->
+       fields =
+         Enum.reduce(Enum.zip(columns, row), %{}, fn {key, value}, map ->
+           Map.put(map, key, value)
+         end)
+
+       repo.load(model, fields)
+     end)}
+  end
+
+  defp load_into_model(_response, _repo, _model) do
+    {:error, :invalid_response}
   end
 
   @impl true

@@ -123,8 +123,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
         {:ok, final_query}
 
       {repo, model} ->
-        Ecto.Adapters.SQL.query(repo, final_query |> IO.inspect(label: "QUERY"), [])
-        |> IO.inspect(label: "RESPONSE")
+        Ecto.Adapters.SQL.query(repo, final_query, [])
         |> load_into_model(repo, model)
     end
   end

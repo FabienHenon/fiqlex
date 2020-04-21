@@ -7,6 +7,9 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   * `table`: The table name to use in the `FROM` statement (defaults to `"table"`)
   * `select`: `SELECT` statement to build (_see below_).
   * `ecto`: Tuple containing the ecto repo and the ecto schema to use for the query. This will execute the query and return the result as a list
+  * `only`: A list with the only fields to accept in the query (if `only` and `except` are both provided, `only` is used)
+  * `except`: A list with the fields to reject in the query (if `only` and `except` are both provided, `only` is used)
+
 
   ### Select option
 
@@ -91,6 +94,18 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
 
       iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello,age=ge=10,friend==true,ok"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name, age, friend, ok FROM table WHERE (name = 'Hello' OR (age >= 10 OR (friend = true OR ok IS NOT NULL)))"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, only: ["bad"])
+      {:error, :selector_not_allowed}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, only: ["name"])
+      {:ok, "SELECT * FROM table WHERE name = 'John'"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, except: ["name"])
+      {:error, :selector_not_allowed}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, except: ["bad"])
+      {:ok, "SELECT * FROM table WHERE name = 'John'"}
   """
   use FIQLEx.QueryBuilder
 
@@ -144,6 +159,22 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     {:error, :invalid_response}
   end
 
+  defp is_selector_allowed(selector, opts) do
+    case Keyword.get(opts, :only, nil) do
+      nil ->
+        case Keyword.get(opts, :except, nil) do
+          nil ->
+            true
+
+          fields ->
+            not Enum.member?(fields, selector)
+        end
+
+      fields ->
+        Enum.member?(fields, selector)
+    end
+  end
+
   @impl true
   def handle_or_expression(exp1, exp2, ast, {query, opts}) do
     with {:ok, {left, _opts}} <- handle_ast(exp1, ast, {query, opts}),
@@ -175,134 +206,210 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
 
   @impl true
   def handle_selector(selector_name, _ast, {_query, opts}) do
-    {:ok, {selector_name <> " IS NOT NULL", opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " IS NOT NULL", opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts})
       when is_binary(value) do
-    if String.starts_with?(value, "*") || String.ends_with?(value, "*") do
-      {:ok,
-       {selector_name <> " LIKE " <> String.replace(escape_string(value), "*", "%", global: true),
-        opts}}
+    if is_selector_allowed(selector_name, opts) do
+      if String.starts_with?(value, "*") || String.ends_with?(value, "*") do
+        {:ok,
+         {selector_name <>
+            " LIKE " <> String.replace(escape_string(value), "*", "%", global: true), opts}}
+      else
+        {:ok, {selector_name <> " = " <> escape_string(value), opts}}
+      end
     else
-      {:ok, {selector_name <> " = " <> escape_string(value), opts}}
+      {:error, :selector_not_allowed}
     end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts})
       when is_list(value) do
-    values = value |> escape_list() |> Enum.join(", ")
-    {:ok, {selector_name <> " IN (" <> values <> ")", opts}}
+    if is_selector_allowed(selector_name, opts) do
+      values = value |> escape_list() |> Enum.join(", ")
+      {:ok, {selector_name <> " IN (" <> values <> ")", opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :equal, true, _ast, {_query, opts}) do
-    {:ok, {selector_name <> " = true", opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " = true", opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :equal, false, _ast, {_query, opts}) do
-    {:ok, {selector_name <> " = false", opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " = false", opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts}) do
-    {:ok, {selector_name <> " = " <> to_string(value), opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " = " <> to_string(value), opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts})
       when is_binary(value) do
-    if String.starts_with?(value, "*") || String.ends_with?(value, "*") do
-      {:ok,
-       {selector_name <>
-          " NOT LIKE " <> String.replace(escape_string(value), "*", "%", global: true), opts}}
+    if is_selector_allowed(selector_name, opts) do
+      if String.starts_with?(value, "*") || String.ends_with?(value, "*") do
+        {:ok,
+         {selector_name <>
+            " NOT LIKE " <> String.replace(escape_string(value), "*", "%", global: true), opts}}
+      else
+        {:ok, {selector_name <> " <> " <> escape_string(value), opts}}
+      end
     else
-      {:ok, {selector_name <> " <> " <> escape_string(value), opts}}
+      {:error, :selector_not_allowed}
     end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts})
       when is_list(value) do
-    values = value |> escape_list() |> Enum.join(", ")
-    {:ok, {selector_name <> " NOT IN (" <> values <> ")", opts}}
+    if is_selector_allowed(selector_name, opts) do
+      values = value |> escape_list() |> Enum.join(", ")
+      {:ok, {selector_name <> " NOT IN (" <> values <> ")", opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :not_equal, true, _ast, {_query, opts}) do
-    {:ok, {selector_name <> " <> true", opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " <> true", opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :not_equal, false, _ast, {_query, opts}) do
-    {:ok, {selector_name <> " <> false", opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " <> false", opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts}) do
-    {:ok, {selector_name <> " <> " <> to_string(value), opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " <> " <> to_string(value), opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value_with_comparison(selector_name, "ge", value, _ast, {_query, opts})
       when is_number(value) do
-    {:ok, {selector_name <> " >= " <> to_string(value), opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " >= " <> to_string(value), opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value_with_comparison(selector_name, "gt", value, _ast, {_query, opts})
       when is_number(value) do
-    {:ok, {selector_name <> " > " <> to_string(value), opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " > " <> to_string(value), opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value_with_comparison(selector_name, "le", value, _ast, {_query, opts})
       when is_number(value) do
-    {:ok, {selector_name <> " <= " <> to_string(value), opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " <= " <> to_string(value), opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value_with_comparison(selector_name, "lt", value, _ast, {_query, opts})
       when is_number(value) do
-    {:ok, {selector_name <> " < " <> to_string(value), opts}}
+    if is_selector_allowed(selector_name, opts) do
+      {:ok, {selector_name <> " < " <> to_string(value), opts}}
+    else
+      {:error, :selector_not_allowed}
+    end
   end
 
   @impl true
   def handle_selector_and_value_with_comparison(selector_name, "ge", value, _ast, {_query, opts})
       when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, _date, _} -> {:ok, {selector_name <> " >= '" <> value <> "'", opts}}
-      {:error, err} -> {:error, err}
+    if is_selector_allowed(selector_name, opts) do
+      case DateTime.from_iso8601(value) do
+        {:ok, _date, _} -> {:ok, {selector_name <> " >= '" <> value <> "'", opts}}
+        {:error, err} -> {:error, err}
+      end
+    else
+      {:error, :selector_not_allowed}
     end
   end
 
   @impl true
   def handle_selector_and_value_with_comparison(selector_name, "gt", value, _ast, {_query, opts})
       when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, _date, _} -> {:ok, {selector_name <> " > '" <> value <> "'", opts}}
-      {:error, err} -> {:error, err}
+    if is_selector_allowed(selector_name, opts) do
+      case DateTime.from_iso8601(value) do
+        {:ok, _date, _} -> {:ok, {selector_name <> " > '" <> value <> "'", opts}}
+        {:error, err} -> {:error, err}
+      end
+    else
+      {:error, :selector_not_allowed}
     end
   end
 
   @impl true
   def handle_selector_and_value_with_comparison(selector_name, "le", value, _ast, {_query, opts})
       when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, _date, _} -> {:ok, {selector_name <> " <= '" <> value <> "'", opts}}
-      {:error, err} -> {:error, err}
+    if is_selector_allowed(selector_name, opts) do
+      case DateTime.from_iso8601(value) do
+        {:ok, _date, _} -> {:ok, {selector_name <> " <= '" <> value <> "'", opts}}
+        {:error, err} -> {:error, err}
+      end
+    else
+      {:error, :selector_not_allowed}
     end
   end
 
   @impl true
   def handle_selector_and_value_with_comparison(selector_name, "lt", value, _ast, {_query, opts})
       when is_binary(value) do
-    case DateTime.from_iso8601(value) do
-      {:ok, _date, _} -> {:ok, {selector_name <> " < '" <> value <> "'", opts}}
-      {:error, err} -> {:error, err}
+    if is_selector_allowed(selector_name, opts) do
+      case DateTime.from_iso8601(value) do
+        {:ok, _date, _} -> {:ok, {selector_name <> " < '" <> value <> "'", opts}}
+        {:error, err} -> {:error, err}
+      end
+    else
+      {:error, :selector_not_allowed}
     end
   end
 

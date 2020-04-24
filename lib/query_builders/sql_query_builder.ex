@@ -12,6 +12,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   * `order_by`: A string order by to be added to the query
   * `limit`: A limit for the query
   * `offset`: An offset for the query
+  * `case_sensitive`: Boolean value (default to true) to set equals case sensitive or not
 
 
   ### Select option
@@ -121,6 +122,18 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
 
       iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, order_by: "name", limit: "5", offset: "10")
       {:ok, "SELECT * FROM table WHERE name = 'John' ORDER BY name LIMIT 5 OFFSET 10"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors, case_sensitive: false)
+      {:ok, "SELECT name FROM table WHERE LOWER(name) = LOWER('John')"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name!=John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors, case_sensitive: false)
+      {:ok, "SELECT name FROM table WHERE LOWER(name) <> LOWER('John')"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name!=*Hello"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors, case_sensitive: false)
+      {:ok, "SELECT name FROM table WHERE name NOT ILIKE '%Hello'"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello*"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors, case_sensitive: false)
+      {:ok, "SELECT name FROM table WHERE name ILIKE 'Hello%'"}
   """
   use FIQLEx.QueryBuilder
 
@@ -201,6 +214,44 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
+  defp is_case_insensitive(opts) do
+    not Keyword.get(opts, :case_sensitive, true)
+  end
+
+  def binary_equal(selector_name, value, opts) do
+    if is_case_insensitive(opts) do
+      "LOWER(" <> selector_name <> ") = LOWER(" <> value <> ")"
+    else
+      selector_name <> " = " <> value
+    end
+  end
+
+  def binary_like(selector_name, value, opts) do
+    if is_case_insensitive(opts) do
+      selector_name <> " ILIKE " <> String.replace(escape_string(value), "*", "%", global: true)
+    else
+      selector_name <> " LIKE " <> String.replace(escape_string(value), "*", "%", global: true)
+    end
+  end
+
+  def binary_not_equal(selector_name, value, opts) do
+    if is_case_insensitive(opts) do
+      "LOWER(" <> selector_name <> ") <> LOWER(" <> value <> ")"
+    else
+      selector_name <> " <> " <> value
+    end
+  end
+
+  def binary_not_like(selector_name, value, opts) do
+    if is_case_insensitive(opts) do
+      selector_name <>
+        " NOT ILIKE " <> String.replace(escape_string(value), "*", "%", global: true)
+    else
+      selector_name <>
+        " NOT LIKE " <> String.replace(escape_string(value), "*", "%", global: true)
+    end
+  end
+
   @impl true
   def handle_or_expression(exp1, exp2, ast, {query, opts}) do
     with {:ok, {left, _opts}} <- handle_ast(exp1, ast, {query, opts}),
@@ -244,11 +295,9 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
       when is_binary(value) do
     if is_selector_allowed(selector_name, opts) do
       if String.starts_with?(value, "*") || String.ends_with?(value, "*") do
-        {:ok,
-         {selector_name <>
-            " LIKE " <> String.replace(escape_string(value), "*", "%", global: true), opts}}
+        {:ok, {binary_like(selector_name, value, opts), opts}}
       else
-        {:ok, {selector_name <> " = " <> escape_string(value), opts}}
+        {:ok, {binary_equal(selector_name, escape_string(value), opts), opts}}
       end
     else
       {:error, :selector_not_allowed}
@@ -287,7 +336,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   @impl true
   def handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts}) do
     if is_selector_allowed(selector_name, opts) do
-      {:ok, {selector_name <> " = " <> to_string(value), opts}}
+      {:ok, {binary_equal(selector_name, to_string(value), opts), opts}}
     else
       {:error, :selector_not_allowed}
     end
@@ -298,11 +347,9 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
       when is_binary(value) do
     if is_selector_allowed(selector_name, opts) do
       if String.starts_with?(value, "*") || String.ends_with?(value, "*") do
-        {:ok,
-         {selector_name <>
-            " NOT LIKE " <> String.replace(escape_string(value), "*", "%", global: true), opts}}
+        {:ok, {binary_not_like(selector_name, value, opts), opts}}
       else
-        {:ok, {selector_name <> " <> " <> escape_string(value), opts}}
+        {:ok, {binary_not_equal(selector_name, escape_string(value), opts), opts}}
       end
     else
       {:error, :selector_not_allowed}
@@ -341,7 +388,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   @impl true
   def handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts}) do
     if is_selector_allowed(selector_name, opts) do
-      {:ok, {selector_name <> " <> " <> to_string(value), opts}}
+      {:ok, {binary_not_equal(selector_name, to_string(value), opts), opts}}
     else
       {:error, :selector_not_allowed}
     end

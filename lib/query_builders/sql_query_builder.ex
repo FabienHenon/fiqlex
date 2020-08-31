@@ -13,6 +13,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   * `limit`: A limit for the query
   * `offset`: An offset for the query
   * `case_sensitive`: Boolean value (default to true) to set equals case sensitive or not
+  * `transformer`: Function that takes a selector and its value as parameter and must return the transformed value
 
 
   ### Select option
@@ -134,6 +135,9 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
 
       iex> FIQLEx.build_query(FIQLEx.parse!("name==Hello*"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors, case_sensitive: false)
       {:ok, "SELECT name FROM table WHERE name ILIKE 'Hello%'"}
+
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==John;age==18"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors, transformer: fn selector, value -> if(selector == "name", do: "Johny", else: value) end)
+      {:ok, "SELECT name, age FROM table WHERE (name = 'Johny' AND age = 18)"}
   """
   use FIQLEx.QueryBuilder
 
@@ -252,6 +256,8 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
+  def identity_transformer(_selector, value), do: value
+
   @impl true
   def handle_or_expression(exp1, exp2, ast, {query, opts}) do
     with {:ok, {left, _opts}} <- handle_ast(exp1, ast, {query, opts}),
@@ -291,8 +297,14 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   end
 
   @impl true
-  def handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts})
-      when is_binary(value) do
+  def handle_selector_and_value(selector_name, op, value, ast, {query, opts}) do
+    new_value = Keyword.get(opts, :transformer, &identity_transformer/2).(selector_name, value)
+
+    do_handle_selector_and_value(selector_name, op, new_value, ast, {query, opts})
+  end
+
+  defp do_handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts})
+       when is_binary(value) do
     if is_selector_allowed(selector_name, opts) do
       if String.starts_with?(value, "*") || String.ends_with?(value, "*") do
         {:ok, {binary_like(selector_name, value, opts), opts}}
@@ -304,9 +316,8 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts})
-      when is_list(value) do
+  defp do_handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts})
+       when is_list(value) do
     if is_selector_allowed(selector_name, opts) do
       values = value |> escape_list() |> Enum.join(", ")
       {:ok, {selector_name <> " IN (" <> values <> ")", opts}}
@@ -315,8 +326,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :equal, true, _ast, {_query, opts}) do
+  defp do_handle_selector_and_value(selector_name, :equal, true, _ast, {_query, opts}) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {selector_name <> " = true", opts}}
     else
@@ -324,8 +334,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :equal, false, _ast, {_query, opts}) do
+  defp do_handle_selector_and_value(selector_name, :equal, false, _ast, {_query, opts}) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {selector_name <> " = false", opts}}
     else
@@ -333,8 +342,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts}) do
+  defp do_handle_selector_and_value(selector_name, :equal, value, _ast, {_query, opts}) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {binary_equal(selector_name, to_string(value), opts), opts}}
     else
@@ -342,9 +350,8 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts})
-      when is_binary(value) do
+  defp do_handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts})
+       when is_binary(value) do
     if is_selector_allowed(selector_name, opts) do
       if String.starts_with?(value, "*") || String.ends_with?(value, "*") do
         {:ok, {binary_not_like(selector_name, value, opts), opts}}
@@ -356,9 +363,8 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts})
-      when is_list(value) do
+  defp do_handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts})
+       when is_list(value) do
     if is_selector_allowed(selector_name, opts) do
       values = value |> escape_list() |> Enum.join(", ")
       {:ok, {selector_name <> " NOT IN (" <> values <> ")", opts}}
@@ -367,8 +373,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :not_equal, true, _ast, {_query, opts}) do
+  defp do_handle_selector_and_value(selector_name, :not_equal, true, _ast, {_query, opts}) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {selector_name <> " <> true", opts}}
     else
@@ -376,8 +381,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :not_equal, false, _ast, {_query, opts}) do
+  defp do_handle_selector_and_value(selector_name, :not_equal, false, _ast, {_query, opts}) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {selector_name <> " <> false", opts}}
     else
@@ -385,8 +389,7 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts}) do
+  defp do_handle_selector_and_value(selector_name, :not_equal, value, _ast, {_query, opts}) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {binary_not_equal(selector_name, to_string(value), opts), opts}}
     else
@@ -395,8 +398,20 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
   end
 
   @impl true
-  def handle_selector_and_value_with_comparison(selector_name, "ge", value, _ast, {_query, opts})
-      when is_number(value) do
+  def handle_selector_and_value_with_comparison(selector_name, op, value, ast, {query, opts}) do
+    new_value = Keyword.get(opts, :transformer, &identity_transformer/2).(selector_name, value)
+
+    do_handle_selector_and_value_with_comparison(selector_name, op, new_value, ast, {query, opts})
+  end
+
+  defp do_handle_selector_and_value_with_comparison(
+         selector_name,
+         "ge",
+         value,
+         _ast,
+         {_query, opts}
+       )
+       when is_number(value) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {selector_name <> " >= " <> to_string(value), opts}}
     else
@@ -404,9 +419,14 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value_with_comparison(selector_name, "gt", value, _ast, {_query, opts})
-      when is_number(value) do
+  defp do_handle_selector_and_value_with_comparison(
+         selector_name,
+         "gt",
+         value,
+         _ast,
+         {_query, opts}
+       )
+       when is_number(value) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {selector_name <> " > " <> to_string(value), opts}}
     else
@@ -414,9 +434,14 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value_with_comparison(selector_name, "le", value, _ast, {_query, opts})
-      when is_number(value) do
+  defp do_handle_selector_and_value_with_comparison(
+         selector_name,
+         "le",
+         value,
+         _ast,
+         {_query, opts}
+       )
+       when is_number(value) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {selector_name <> " <= " <> to_string(value), opts}}
     else
@@ -424,9 +449,14 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value_with_comparison(selector_name, "lt", value, _ast, {_query, opts})
-      when is_number(value) do
+  defp do_handle_selector_and_value_with_comparison(
+         selector_name,
+         "lt",
+         value,
+         _ast,
+         {_query, opts}
+       )
+       when is_number(value) do
     if is_selector_allowed(selector_name, opts) do
       {:ok, {selector_name <> " < " <> to_string(value), opts}}
     else
@@ -434,9 +464,14 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value_with_comparison(selector_name, "ge", value, _ast, {_query, opts})
-      when is_binary(value) do
+  defp do_handle_selector_and_value_with_comparison(
+         selector_name,
+         "ge",
+         value,
+         _ast,
+         {_query, opts}
+       )
+       when is_binary(value) do
     if is_selector_allowed(selector_name, opts) do
       case DateTime.from_iso8601(value) do
         {:ok, _date, _} -> {:ok, {selector_name <> " >= '" <> value <> "'", opts}}
@@ -447,9 +482,14 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value_with_comparison(selector_name, "gt", value, _ast, {_query, opts})
-      when is_binary(value) do
+  defp do_handle_selector_and_value_with_comparison(
+         selector_name,
+         "gt",
+         value,
+         _ast,
+         {_query, opts}
+       )
+       when is_binary(value) do
     if is_selector_allowed(selector_name, opts) do
       case DateTime.from_iso8601(value) do
         {:ok, _date, _} -> {:ok, {selector_name <> " > '" <> value <> "'", opts}}
@@ -460,9 +500,14 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value_with_comparison(selector_name, "le", value, _ast, {_query, opts})
-      when is_binary(value) do
+  defp do_handle_selector_and_value_with_comparison(
+         selector_name,
+         "le",
+         value,
+         _ast,
+         {_query, opts}
+       )
+       when is_binary(value) do
     if is_selector_allowed(selector_name, opts) do
       case DateTime.from_iso8601(value) do
         {:ok, _date, _} -> {:ok, {selector_name <> " <= '" <> value <> "'", opts}}
@@ -473,9 +518,14 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value_with_comparison(selector_name, "lt", value, _ast, {_query, opts})
-      when is_binary(value) do
+  defp do_handle_selector_and_value_with_comparison(
+         selector_name,
+         "lt",
+         value,
+         _ast,
+         {_query, opts}
+       )
+       when is_binary(value) do
     if is_selector_allowed(selector_name, opts) do
       case DateTime.from_iso8601(value) do
         {:ok, _date, _} -> {:ok, {selector_name <> " < '" <> value <> "'", opts}}
@@ -486,15 +536,12 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
     end
   end
 
-  @impl true
-  def handle_selector_and_value_with_comparison(_selector_name, op, value, _ast, _state)
-      when is_number(value) do
+  defp do_handle_selector_and_value_with_comparison(_selector_name, op, value, _ast, _state)
+       when is_number(value) do
     {:error, "Unsupported " <> op <> " operator"}
   end
 
-  @impl true
-
-  def handle_selector_and_value_with_comparison(_selector_name, _op, value, _ast, _state) do
+  defp do_handle_selector_and_value_with_comparison(_selector_name, _op, value, _ast, _state) do
     {:error,
      "Comparisons must be done against number or date values (got: " <> to_string(value) <> ")"}
   end

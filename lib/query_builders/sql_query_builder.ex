@@ -46,6 +46,9 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
       iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
       {:ok, "SELECT name FROM table WHERE name = 'John'"}
 
+      iex> FIQLEx.build_query(FIQLEx.parse!("name==cafè"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors)
+      {:ok, "SELECT name FROM table WHERE name = 'cafè'"}
+
       iex> FIQLEx.build_query(FIQLEx.parse!("name==John"), FIQLEx.QueryBuilders.SQLQueryBuilder, select: :from_selectors, table: "author")
       {:ok, "SELECT name FROM author WHERE name = 'John'"}
 
@@ -148,6 +151,8 @@ defmodule FIQLEx.QueryBuilders.SQLQueryBuilder do
 
   @impl true
   def build(ast, {query, opts}) do
+    query = :binary.bin_to_list(query) |> to_string
+
     select =
       case Keyword.get(opts, :select, :all) do
         :all ->
